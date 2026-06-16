@@ -36,7 +36,7 @@ PowerLit 的灵感主要来自 GitHub 上大量同类型的 paper database、lit
 | 自动化 literature review pipeline | [CarinaSchoppe/PISMA-Literature-Review-Pipeline-Automation-Tool](https://github.com/CarinaSchoppe/PISMA-Literature-Review-Pipeline-Automation-Tool) | 把检索、筛选、PDF 获取、数据集和摘要生成串成流水线 | 把检索入库、全文线索、人工下载、PDF 绑定、解析和 AI 分析串成日常工作流 |
 | AI research workbench | [hherb/bmlibrarian](https://github.com/hherb/bmlibrarian)、[ZimoLiao/scholaraio](https://github.com/ZimoLiao/scholaraio) | 将文献搜索、阅读、事实核查、分析和写作支持放进一个 AI 辅助工作台 | 面向个人或小团队提供 Web UI、CLI、API 三入口，并把 AI 结果写回本地索引 |
 | AI / agent paper collection 插件 | [ctoth/research-papers-plugin](https://github.com/ctoth/research-papers-plugin) | 让 Claude Code、Codex CLI、Gemini CLI 等 agent 直接操作 annotated paper collections | 为后续 Codex/agent 工作流保留清晰目录、CLI 命令和结构化 JSON 输出 |
-| PDF 转 Markdown / JSON 工具 | [datalab-to/marker](https://github.com/datalab-to/marker) | 把 PDF 转成 Markdown、JSON、chunks 和结构化数据 | PowerLit 将 PDF 解析产物接入 DOI、期刊目录、Obsidian 笔记和分析记录 |
+| PDF 转 Markdown / JSON 工具 | [opendatalab/MinerU](https://github.com/opendatalab/MinerU) | 将复杂 PDF 等文档解析为适合 LLM 工作流使用的 Markdown / JSON | PowerLit 接入本地 MinerU 和官方 MinerU API，把解析产物关联到 DOI、期刊目录、Obsidian 笔记和分析记录 |
 
 这些项目共同证明：论文库可以从“文件夹里的 PDF”升级为“可运行的研究数据库”。PowerLit 在这个谱系上聚焦电力系统方向，把元数据可信性、本地/NAS 文件管理、人工下载现实、中文期刊入口、AI 笔记和批量分析整合进同一套轻量工具。
 

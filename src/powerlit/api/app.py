@@ -111,7 +111,7 @@ def create_app(app_settings: Settings) -> FastAPI:
             app.state.provider_checks = []
         yield
 
-    app = FastAPI(title="PowerLit API", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="PowerLit API", version="0.2.0b1", lifespan=lifespan)
     service = SearchService(app_settings)
     analysis_service = AnalysisService(app_settings)
     card_service = PaperCardService(app_settings)

@@ -25,6 +25,7 @@ from powerlit.services.assisted_download import (
 from powerlit.services.artifact_metadata import enrich_paper_row
 from powerlit.services.catalog_views import CatalogViewService
 from powerlit.services.existing_note_audit import ExistingNoteAuditService
+from powerlit.services.evidence_index import EvidenceIndexService
 from powerlit.services.export import export_download_queue, export_records
 from powerlit.services.fulltext_resolver import FullTextResolver
 from powerlit.services.incoming_processor import (
@@ -2480,6 +2481,16 @@ def workspace_obsidian_path(path: Path | None) -> str:
 
 rag_app = typer.Typer(help="本地 RAG (检索增强生成) 向量数据库管理")
 app.add_typer(rag_app, name="rag")
+EVIDENCE_BUILD_VENUE_FOLDER_OPTION = typer.Option(
+    None,
+    "--venue-folder",
+    help="只索引指定顶层期刊/来源目录，可重复传入。",
+)
+EVIDENCE_SEARCH_VENUE_FOLDER_OPTION = typer.Option(
+    None,
+    "--venue-folder",
+    help="按顶层期刊/来源目录过滤，可重复传入。",
+)
 
 
 @rag_app.command("build-index")
@@ -2494,6 +2505,34 @@ def rag_build_index(
         typer.secho(f"✅ 成功构建索引，共计 {count} 个文本切片", fg=typer.colors.GREEN)
     else:
         typer.echo("没有新内容需要索引或索引已存在（使用 --force 重建）")
+
+
+@rag_app.command("build-evidence-index")
+def rag_build_evidence_index(
+    force: bool = typer.Option(False, "--force", "-f", help="强制重建证据索引。"),
+    venue_folder: list[str] | None = EVIDENCE_BUILD_VENUE_FOLDER_OPTION,
+    limit: int | None = typer.Option(
+        None,
+        "--limit",
+        "-l",
+        min=1,
+        help="最多处理多少篇解析 JSON，用于冒烟测试。",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="以 JSON 输出构建摘要。"),
+) -> None:
+    """构建毫秒级 SQLite FTS5 证据检索索引。"""
+    service = EvidenceIndexService(settings)
+    summary = service.build(force=force, venue_folders=venue_folder, limit=limit)
+    if json_output:
+        typer.echo(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
+        return
+    typer.secho("证据索引构建完成", fg=typer.colors.GREEN, bold=True)
+    typer.echo(f"数据库：{summary.db_path}")
+    typer.echo(f"JSON 根目录：{summary.json_root}")
+    typer.echo(
+        f"文档 {summary.documents} 篇，chunk {summary.chunks} 条，"
+        f"跳过 {summary.skipped} 个文件，用时 {summary.elapsed_ms} ms"
+    )
 
 
 @rag_app.command("search")
@@ -2514,6 +2553,80 @@ def rag_search(
         typer.echo(f"DOI: {res.doi} | Chunk: {res.chunk_index}")
         typer.echo("-" * 40)
         typer.echo(res.text)
+
+
+@rag_app.command("evidence")
+def rag_evidence(
+    query: str = typer.Argument(..., help="证据检索查询。"),
+    top: int = typer.Option(20, "--top", "-k", min=1, max=200, help="返回结果数量。"),
+    venue_folder: list[str] | None = EVIDENCE_SEARCH_VENUE_FOLDER_OPTION,
+    year_from: int | None = typer.Option(None, "--year-from", help="发表年份下限。"),
+    year_to: int | None = typer.Option(None, "--year-to", help="发表年份上限。"),
+    doi: str | None = typer.Option(None, "--doi", help="只检索指定 DOI。"),
+    section: str | None = typer.Option(None, "--section", help="按章节标题模糊过滤。"),
+    json_output: bool = typer.Option(False, "--json", help="以 JSON 输出，供 skill 调用。"),
+) -> None:
+    """在本地证据索引中进行毫秒级 FTS 检索。"""
+    service = EvidenceIndexService(settings)
+    payload = service.search(
+        query,
+        top=top,
+        venue_folders=venue_folder,
+        year_from=year_from,
+        year_to=year_to,
+        doi=doi,
+        section=section,
+    )
+    if json_output:
+        typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+    elif not payload["available"]:
+        typer.secho(payload["message"], fg=typer.colors.RED)
+    elif not payload["results"]:
+        typer.echo("未找到匹配证据")
+    else:
+        typer.echo(
+            f"候选源：{payload['candidate_source']} | "
+            f"结果 {payload['count']} 条 | 用时 {payload['elapsed_ms']} ms"
+        )
+        for i, item in enumerate(payload["results"], start=1):
+            typer.secho(
+                f"\n[{i}] {item['title']} (score={item['score']})",
+                fg=typer.colors.CYAN,
+                bold=True,
+            )
+            typer.echo(
+                f"DOI: {item['doi'] or 'unknown'} | "
+                f"Venue: {item['venue_folder'] or 'unknown'} | "
+                f"Year: {item['year'] or 'unknown'}"
+            )
+            typer.echo(
+                f"Section: {item['section'] or 'unknown'} | "
+                f"Page: {item['page_start'] or 'unknown'}"
+            )
+            typer.echo(item["snippet"])
+            typer.echo(f"Parsed JSON: {item['parsed_json_path']}")
+    if not payload["available"]:
+        raise typer.Exit(code=2)
+
+
+@rag_app.command("evidence-status")
+def rag_evidence_status(
+    json_output: bool = typer.Option(False, "--json", help="以 JSON 输出状态。"),
+) -> None:
+    """查看本地证据索引状态。"""
+    service = EvidenceIndexService(settings)
+    payload = service.status()
+    if json_output:
+        typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+    if not payload["available"]:
+        typer.secho(payload["message"], fg=typer.colors.RED)
+        typer.echo(f"数据库：{payload['db_path']}")
+        raise typer.Exit(code=2)
+    typer.secho("证据索引可用", fg=typer.colors.GREEN, bold=True)
+    typer.echo(f"数据库：{payload['db_path']}")
+    typer.echo(f"JSON 根目录：{payload['json_root']}")
+    typer.echo(f"文档 {payload['documents']} 篇，chunk {payload['chunks']} 条")
 
 
 @rag_app.command("ingest-all")

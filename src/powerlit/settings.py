@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     metadata_dir: Path = Field(default=PROJECT_ROOT / "literature/metadata")
     index_dir: Path = Field(default=PROJECT_ROOT / "literature/index")
     vector_index_dir: Path = Field(default=PROJECT_ROOT / "literature/index/vector_index")
+    json_root: Path | None = None
+    index_root: Path | None = None
     reports_dir: Path = Field(default=PROJECT_ROOT / "literature/reports")
     weekly_reports_dir: Path = Field(default=PROJECT_ROOT / "literature/reports/weekly")
     monthly_reports_dir: Path = Field(default=PROJECT_ROOT / "literature/reports/monthly")
@@ -107,7 +109,7 @@ class Settings(BaseSettings):
     @property
     def user_agent(self) -> str:
         suffix = f" ({self.crossref_mailto})" if self.crossref_mailto else ""
-        return f"powerlit/0.1{suffix}"
+        return f"powerlit/0.2.0b1{suffix}"
 
     @model_validator(mode="after")
     def resolve_repo_relative_paths(self) -> Settings:
@@ -118,6 +120,8 @@ class Settings(BaseSettings):
             "metadata_dir",
             "index_dir",
             "vector_index_dir",
+            "json_root",
+            "index_root",
             "reports_dir",
             "weekly_reports_dir",
             "monthly_reports_dir",
@@ -138,6 +142,10 @@ class Settings(BaseSettings):
             value = getattr(self, field_name)
             if isinstance(value, Path) and not value.is_absolute():
                 setattr(self, field_name, (PROJECT_ROOT / value).resolve())
+        if self.json_root is None:
+            self.json_root = self.parsed_output_dir
+        if self.index_root is None:
+            self.index_root = self.index_dir / "evidence"
         return self
 
     @field_validator("pdf_transcription_backend")

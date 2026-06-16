@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}下载队列{% endblock %}
+
+{% block content %}
+<section class="grid-layout">
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <p class="eyebrow">Attach PDF</p>
+        <h1>绑定已下载全文</h1>
+      </div>
+    </div>
+    <form class="stack-form" method="post" action="/ui/upload-pdf" enctype="multipart/form-data">
+      <label>
+        <span>DOI</span>
+        <input type="text" name="doi" placeholder="10.1109/example">
+      </label>
+      <label>
+        <span>PDF 文件</span>
+        <input type="file" name="file" accept=".pdf,application/pdf">
+      </label>
+      <button class="primary-btn" type="submit">上传并绑定</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <p class="eyebrow">Queue Filters</p>
+        <h2>筛选下载队列</h2>
+      </div>
+    </div>
+    <form class="stack-form" method="get" action="/queue">
+      <label>
+        <span>主题包</span>
+        <select name="query_pack">
+          <option value="">全部</option>
+          {% for item in query_packs %}
+          <option value="{{ item }}" {% if item == selected_query_pack %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        <span>数量</span>
+        <input type="number" name="limit" min="1" max="500" value="{{ limit }}">
+      </label>
+      <label class="toggle single">
+        <input type="checkbox" name="pending_only" value="true" {% if pending_only %}checked{% endif %}>
+        <span>只看未下载</span>
+      </label>
+      <button class="ghost-btn" type="submit">更新队列</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Manual Full-Text Workflow</p>
+      <h2>待下载全文列表</h2>
+    </div>
+  </div>
+  <div class="queue-grid full">
+    {% for item in queue_items %}
+    <article class="queue-card">
+      <div class="record-meta">
+        <span>{{ item.year or "未知年份" }}</span>
+        <span>{{ item.query_pack or "未分组" }}</span>
+        <span class="status-pill status-{{ item.download_status }}">{{ item.download_status }}</span>
+      </div>
+      <h3>{{ item.title }}</h3>
+      <p>{{ item.source_title or "来源未知" }}</p>
+      <dl class="detail-grid">
+        <div>
+          <dt>DOI</dt>
+          <dd>{{ item.doi or "缺失" }}</dd>
+        </div>
+        <div>
+          <dt>建议文件名</dt>
+          <dd>{{ item.suggested_filename }}</dd>
+        </div>
+        <div>
+          <dt>获取方式</dt>
+          <dd>{{ item.acquisition_method or "待解析" }}</dd>
+        </div>
+        <div>
+          <dt>获取阶段</dt>
+          <dd>{{ item.acquisition_stage or "metadata_indexed" }}</dd>
+        </div>
+        <div class="span-all">
+          <dt>获取来源</dt>
+          <dd>{{ item.acquisition_source_url or item.publisher_url or "未解析" }}</dd>
+        </div>
+        <div class="span-all">
+          <dt>目标路径</dt>
+          <dd>{{ item.target_pdf_path }}</dd>
+        </div>
+      </dl>
+      <div class="record-links">
+        {% if item.publisher_url %}
+        <a href="{{ item.publisher_url }}" target="_blank" rel="noreferrer">出版商页面</a>
+        {% endif %}
+        {% if item.researchgate_url or item.researchgate_lookup_url %}
+        <a href="{{ item.researchgate_url or item.researchgate_lookup_url }}" target="_blank" rel="noreferrer">ResearchGate</a>
+        {% endif %}
+      </div>
+    </article>
+    {% else %}
+    <p class="empty-state">当前没有待下载条目。</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

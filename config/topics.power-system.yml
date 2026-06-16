@@ -1,0 +1,25 @@
+topics:
+  stability:
+    description: Stability, inverter-dominated systems, small-signal and transient stability.
+    query: "\"power system stability\" OR \"transient stability\" OR \"small signal stability\" inverter"
+  optimal-power-flow:
+    description: Optimal power flow, unit commitment, and economic dispatch.
+    query: "\"optimal power flow\" OR \"economic dispatch\" OR \"unit commitment\" \"power system\""
+  renewable-integration:
+    description: Renewable integration, grid-forming control, and converter-dominated grids.
+    query: "\"renewable integration\" OR \"grid-forming\" OR \"converter-dominated\" \"power system\""
+  distribution-network:
+    description: Active distribution networks and distribution system operation.
+    query: "\"distribution network\" OR \"distribution system\" \"power system\""
+  microgrid:
+    description: Microgrid planning, control, and energy management.
+    query: "microgrid \"energy management\" OR microgrid control \"power system\""
+  protection-control:
+    description: Protection, wide-area control, and power system control.
+    query: "\"power system protection\" OR \"wide-area control\" OR \"power system control\""
+  resilience:
+    description: Resilience, restoration, and extreme-event response.
+    query: "\"power system resilience\" OR restoration OR hurricane OR wildfire"
+  storage:
+    description: Battery energy storage in grid operation and stability support.
+    query: "\"battery energy storage\" \"power system\" OR BESS stability grid"

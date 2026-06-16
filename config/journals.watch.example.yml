@@ -1,0 +1,40 @@
+journals:
+  - short_name: ieee_tsg
+    title: IEEE Transactions on Smart Grid
+    issns:
+      - 1949-3053
+    providers:
+      - crossref
+      - openalex
+    from_year: 2015
+    limit: 500
+
+  - short_name: ieee_tpwrs
+    title: IEEE Transactions on Power Systems
+    issns:
+      - 1558-0679
+    providers:
+      - crossref
+      - openalex
+    from_year: 2015
+    limit: 500
+
+  - short_name: applied_energy
+    title: Applied Energy
+    issns:
+      - 0306-2619
+    providers:
+      - crossref
+      - openalex
+    from_year: 2015
+    limit: 500
+
+  - short_name: energy
+    title: Energy
+    issns:
+      - 0360-5442
+    providers:
+      - crossref
+      - openalex
+    from_year: 2015
+    limit: 500

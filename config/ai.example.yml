@@ -1,0 +1,45 @@
+# PowerLit AI 配置档
+#
+# 复制本文件为 config/ai.yml，填入真实 API Key 后即可使用。
+# config/ai.yml 已被 .gitignore 忽略，不会被提交。
+#
+# 如果 config/ai.yml 不存在，PowerLit 会自动回退到 .env 中的 POWERLIT_AI_* 变量。
+
+# 默认参数：所有 profile 共享，各 profile 可单独覆盖
+defaults:
+  temperature: 0.1
+  timeout: 60
+  note_timeout: 600
+  source_char_limit: 16000
+  note_source_char_limit: 90000
+  note_chunk_char_limit: 6000
+
+# 命名配置档
+profiles:
+  qwen-72b:
+    provider: siliconflow
+    base_url: https://api.siliconflow.cn/v1
+    api_key: ""
+    model: Qwen/Qwen2.5-72B-Instruct
+    currency: CNY
+    input_price_per_mtokens: 4.13
+    output_price_per_mtokens: 4.13
+
+  deepseek-v3:
+    provider: deepseek
+    base_url: https://api.deepseek.com/v1
+    api_key: ""
+    model: deepseek-chat
+    timeout: 120
+    currency: CNY
+    input_price_per_mtokens: 2.0
+    output_price_per_mtokens: 8.0
+
+# 全局默认配置档（tasks 中未指定的任务使用此 profile）
+default: qwen-72b
+
+# 按任务指定配置档
+tasks:
+  note: qwen-72b          # Markdown 转写
+  review: qwen-72b        # 笔记校对
+  analysis: qwen-72b      # 文献分析

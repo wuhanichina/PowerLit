@@ -1,0 +1,67 @@
+journals:
+  - short_name: ieee_tpwrs
+    title: IEEE Transactions on Power Systems
+    issns:
+      - 1558-0679
+    providers:
+      - openalex
+    from_year: 2020
+
+  - short_name: ieee_tsg
+    title: IEEE Transactions on Smart Grid
+    issns:
+      - 1949-3053
+    providers:
+      - openalex
+    from_year: 2020
+
+  - short_name: ieee_tste
+    title: IEEE Transactions on Sustainable Energy
+    issns:
+      - 1949-3037
+    providers:
+      - openalex
+    from_year: 2020
+
+  - short_name: applied_energy
+    title: Applied Energy
+    issns:
+      - 0306-2619
+    providers:
+      - openalex
+    from_year: 2020
+
+  - short_name: energy
+    title: Energy
+    issns:
+      - 0360-5442
+    providers:
+      - openalex
+    from_year: 2020
+
+  - short_name: pcsee
+    title: "\u4e2d\u56fd\u7535\u673a\u5de5\u7a0b\u5b66\u62a5"
+    issns:
+      - 0258-8013
+    providers:
+      - csee_portal
+      - cnki_navi
+    from_year: 2020
+
+  - short_name: aeps
+    title: "\u7535\u529b\u7cfb\u7edf\u81ea\u52a8\u5316"
+    issns:
+      - 1000-1026
+    providers:
+      - cnki_navi
+      - openalex
+    from_year: 2020
+
+  - short_name: pst
+    title: "\u7535\u7f51\u6280\u672f"
+    issns:
+      - 1000-3673
+    providers:
+      - cnki_navi
+      - openalex
+    from_year: 2020

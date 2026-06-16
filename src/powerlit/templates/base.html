@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}PowerLit{% endblock %}</title>
+  <link rel="stylesheet" href="{{ request.url_for('static', path='app.css') }}">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="/">
+        <span class="brand-mark">PL</span>
+        <span class="brand-copy">
+          <strong>PowerLit</strong>
+          <small>电力系统文献库</small>
+        </span>
+      </a>
+      <nav class="site-nav">
+        <a href="/">仪表盘</a>
+        <a href="/library">文献库</a>
+        <a href="/queue">下载队列</a>
+        <a href="/docs">API</a>
+      </nav>
+    </header>
+
+    <main class="site-main">
+      {% if message %}
+      <section class="flash">
+        <p>{{ message }}</p>
+      </section>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,17 @@
+defaults:
+  providers:
+    - crossref
+    - openalex
+  limit: 20
+  from_date: 2022-01-01
+  until_date: 2026-03-12
+
+queries:
+  - name: stability
+    query: "\"power system stability\" inverter"
+  - name: optimal-power-flow
+    query: "\"optimal power flow\" power system"
+  - name: microgrid
+    query: "microgrid energy management power system"
+  - name: resilience
+    query: "\"power system resilience\" renewable"

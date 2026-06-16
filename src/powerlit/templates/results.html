@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}检索结果 - {{ query_name }}{% endblock %}
+
+{% block content %}
+<section class="panel hero-panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Search Results</p>
+      <h1>{{ query_name }}</h1>
+    </div>
+    <a class="text-link" href="/library?query_pack={{ query_name }}">查看已入库结果</a>
+  </div>
+  <p class="hero-text">{{ query_text }}</p>
+  <div class="path-list">
+    <span>JSON: {{ export_paths.json }}</span>
+    <span>CSV: {{ export_paths.csv }}</span>
+    <span>MD: {{ export_paths.md }}</span>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Normalized Records</p>
+      <h2>本次检索结果</h2>
+    </div>
+  </div>
+  <div class="record-list">
+    {% for paper in results %}
+    <article class="record-card">
+      <div class="record-meta">
+        <span>{{ paper.year or "未知年份" }}</span>
+        <span>{{ paper.providers or "unknown" }}</span>
+        <span>{{ paper.document_type }}</span>
+      </div>
+      <h3>{{ paper.title }}</h3>
+      <p class="citation">{{ paper.gbt7714_citation }}</p>
+      <div class="record-links">
+        {% if paper.doi %}
+        <a href="https://doi.org/{{ paper.doi }}" target="_blank" rel="noreferrer">DOI</a>
+        {% endif %}
+        {% if paper.publisher_url %}
+        <a href="{{ paper.publisher_url }}" target="_blank" rel="noreferrer">出版商页面</a>
+        {% endif %}
+        {% if paper.researchgate_url or paper.researchgate_lookup_url %}
+        <a href="{{ paper.researchgate_url or paper.researchgate_lookup_url }}" target="_blank" rel="noreferrer">ResearchGate</a>
+        {% endif %}
+      </div>
+    </article>
+    {% else %}
+    <p class="empty-state">这次检索没有得到可用记录。</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}文献库{% endblock %}
+
+{% block content %}
+<section class="panel hero-panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Indexed Library</p>
+      <h1>本地文献库</h1>
+    </div>
+  </div>
+  <form class="filter-bar" method="get" action="/library">
+    <label>
+      <span>主题包</span>
+      <select name="query_pack">
+        <option value="">全部</option>
+        {% for item in query_packs %}
+        <option value="{{ item }}" {% if item == selected_query_pack %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>数量</span>
+      <input type="number" name="limit" min="1" max="500" value="{{ limit }}">
+    </label>
+    <button class="ghost-btn" type="submit">刷新列表</button>
+  </form>
+</section>
+
+<section class="record-list">
+  {% for paper in papers %}
+  <article class="record-card panel">
+    <div class="record-meta">
+      <span>{{ paper.year or "未知年份" }}</span>
+      <span>{{ paper.query_pack or "未分组" }}</span>
+      <span class="status-pill status-{{ paper.download_status }}">{{ paper.download_status }}</span>
+    </div>
+    <h2>{{ paper.title }}</h2>
+    <p class="citation">{{ paper.gbt7714_citation }}</p>
+    <dl class="detail-grid">
+      <div>
+        <dt>DOI</dt>
+        <dd>{{ paper.doi or "缺失" }}</dd>
+      </div>
+      <div>
+        <dt>来源</dt>
+        <dd>{{ paper.source_title or "未知" }}</dd>
+      </div>
+      <div>
+        <dt>Providers</dt>
+        <dd>{{ paper.providers or "unknown" }}</dd>
+      </div>
+      <div>
+        <dt>获取方式</dt>
+        <dd>{{ paper.acquisition_method or "待解析" }}</dd>
+      </div>
+      <div>
+        <dt>获取阶段</dt>
+        <dd>{{ paper.acquisition_stage or "metadata_indexed" }}</dd>
+      </div>
+      <div class="span-all">
+        <dt>获取来源</dt>
+        <dd>{{ paper.acquisition_source_url or paper.publisher_url or "未解析" }}</dd>
+      </div>
+      <div class="span-all">
+        <dt>本地 PDF</dt>
+        <dd>{{ paper.local_pdf_path or "未绑定" }}</dd>
+      </div>
+      <div class="span-all">
+        <dt>解析 Markdown</dt>
+        <dd>{{ paper.parsed_md_path or "未生成" }}</dd>
+      </div>
+      <div>
+        <dt>笔记费用</dt>
+        <dd>
+          {% if paper.parsed_note_cost is not none %}
+          {{ "%.6f"|format(paper.parsed_note_cost) }} {{ paper.parsed_note_currency or "CNY" }}
+          {% else %}
+          unknown
+          {% endif %}
+        </dd>
+      </div>
+      <div>
+        <dt>分析费用</dt>
+        <dd>
+          {% if paper.analysis_cost is not none %}
+          {{ "%.6f"|format(paper.analysis_cost) }} {{ paper.analysis_currency or "CNY" }}
+          {% else %}
+          unknown
+          {% endif %}
+        </dd>
+      </div>
+      <div>
+        <dt>总费用</dt>
+        <dd>
+          {% if paper.total_ai_cost is not none %}
+          {{ "%.6f"|format(paper.total_ai_cost) }} {{ paper.total_ai_cost_currency or "CNY" }}
+          {% else %}
+          unknown
+          {% endif %}
+        </dd>
+      </div>
+      <div class="span-all">
+        <dt>分析 Markdown</dt>
+        <dd>{{ paper.analysis_md_path or "未生成" }}</dd>
+      </div>
+      <div class="span-all">
+        <dt>分析 JSON</dt>
+        <dd>{{ paper.analysis_json_path or "未生成" }}</dd>
+      </div>
+    </dl>
+    <div class="record-links">
+      {% if paper.publisher_url %}
+      <a href="{{ paper.publisher_url }}" target="_blank" rel="noreferrer">出版商页面</a>
+      {% endif %}
+      {% if paper.parsed_md_path %}
+      <a href="/local-file?path={{ paper.parsed_md_path|urlencode }}" target="_blank" rel="noreferrer">Obsidian 笔记</a>
+      {% endif %}
+      {% if paper.local_pdf_path %}
+      <a href="/local-file?path={{ paper.local_pdf_path|urlencode }}" target="_blank" rel="noreferrer">PDF</a>
+      {% endif %}
+      {% if paper.analysis_md_path %}
+      <a href="/local-file?path={{ paper.analysis_md_path|urlencode }}" target="_blank" rel="noreferrer">分析笔记</a>
+      {% endif %}
+      {% if paper.analysis_json_path %}
+      <a href="/local-file?path={{ paper.analysis_json_path|urlencode }}" target="_blank" rel="noreferrer">分析 JSON</a>
+      {% endif %}
+      {% if paper.researchgate_url or paper.researchgate_lookup_url %}
+      <a href="{{ paper.researchgate_url or paper.researchgate_lookup_url }}" target="_blank" rel="noreferrer">ResearchGate</a>
+      {% endif %}
+    </div>
+  </article>
+  {% else %}
+  <section class="panel">
+    <p class="empty-state">当前没有符合条件的论文记录。</p>
+  </section>
+  {% endfor %}
+</section>
+{% endblock %}

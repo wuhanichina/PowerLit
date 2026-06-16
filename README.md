@@ -144,7 +144,7 @@ POWERLIT_INDEX_ROOT=<NAS_OR_STORAGE_ROOT>/literature/index/evidence
 
 写作 skill 集成时，优先调用 `powerlit rag evidence --json`；如果本机没有安装 PowerLit CLI，再回退到 skill 仓库旧的 `Search-PowerLitIndex.py`。
 
-旧的 `powerlit rag build-index/search` 仍保留为 FAISS 语义向量实验入口，不属于毫秒级证据检索热路径。
+旧的 `powerlit rag build-index/search` 仍保留为 FAISS 语义向量实验入口，不属于毫秒级证据检索热路径。默认安装不再携带 `faiss-cpu` / `sentence-transformers` 及其 `torch` 依赖；需要继续使用语义向量实验入口时，请先在本地环境中手动安装这些依赖。
 
 ### 6. 启动 Web UI
 

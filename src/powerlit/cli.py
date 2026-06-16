@@ -24,6 +24,7 @@ from powerlit.services.assisted_download import (
 )
 from powerlit.services.artifact_metadata import enrich_paper_row
 from powerlit.services.catalog_views import CatalogViewService
+from powerlit.services.drive_upload import GoogleDriveService
 from powerlit.services.existing_note_audit import ExistingNoteAuditService
 from powerlit.services.evidence_index import EvidenceIndexService
 from powerlit.services.export import export_download_queue, export_records
@@ -34,6 +35,7 @@ from powerlit.services.incoming_processor import (
     iter_incoming_pdfs,
 )
 from powerlit.services.incoming_oa_download import OAIncomingDownloadService
+from powerlit.services.incoming_watcher import IncomingWatcherService
 from powerlit.services.index import IndexStore
 from powerlit.services.journal_issue_catalog import JournalIssueCatalogService
 from powerlit.services.library_layout import (
@@ -53,14 +55,12 @@ from powerlit.services.provider_health import (
     check_provider_connectivity,
     render_provider_check_line,
 )
+from powerlit.services.rag_index import RAGIndexService, RAGVectorDependencyError
+from powerlit.services.rag_search import RAGSearchService
 from powerlit.services.reports import write_weekly_report
 from powerlit.services.search import SearchService, load_journal_bundle, load_query_bundle
 from powerlit.services.status import provider_status
 from powerlit.services.topics import load_topics
-from powerlit.services.rag_index import RAGIndexService
-from powerlit.services.rag_search import RAGSearchService
-from powerlit.services.incoming_watcher import IncomingWatcherService
-from powerlit.services.drive_upload import GoogleDriveService
 from powerlit.settings import settings
 
 
@@ -2504,7 +2504,12 @@ def rag_build_index(
     """遍历 literature/json 所有的 MinerU 解析结果并构建向量索引"""
     service = RAGIndexService(settings)
     typer.echo("正在扫描 JSON 并生成向量，这可能需要几分钟...")
-    count = service.build_full_index(force=force)
+    try:
+        count = service.build_full_index(force=force)
+    except RAGVectorDependencyError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED)
+        typer.echo("毫秒级证据检索请使用：powerlit rag evidence")
+        raise typer.Exit(code=2) from exc
     if count > 0:
         typer.secho(f"✅ 成功构建索引，共计 {count} 个文本切片", fg=typer.colors.GREEN)
     else:
@@ -2546,14 +2551,23 @@ def rag_search(
 ) -> None:
     """在本地文献库中进行语义检索"""
     service = RAGSearchService(settings)
-    results = service.search(query, top_k=top_k)
-    
+    try:
+        results = service.search(query, top_k=top_k)
+    except RAGVectorDependencyError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED)
+        typer.echo("毫秒级证据检索请使用：powerlit rag evidence")
+        raise typer.Exit(code=2) from exc
+
     if not results:
         typer.echo("未找到匹配结果")
         return
-        
+
     for i, res in enumerate(results, start=1):
-        typer.secho(f"\n[{i}] {res.title} (Score: {res.score:.4f})", fg=typer.colors.CYAN, bold=True)
+        typer.secho(
+            f"\n[{i}] {res.title} (Score: {res.score:.4f})",
+            fg=typer.colors.CYAN,
+            bold=True,
+        )
         typer.echo(f"DOI: {res.doi} | Chunk: {res.chunk_index}")
         typer.echo("-" * 40)
         typer.echo(res.text)
@@ -2637,35 +2651,44 @@ def rag_evidence_status(
 def rag_ingest_all(
     limit: int = typer.Option(None, "--limit", "-l", help="限制处理的文件数量"),
     force: bool = typer.Option(True, "--force/--no-force", help="是否强制覆盖现有解析记录"),
-    sync: bool = typer.Option(False, "--sync/--no-sync", help="是否在解析后立即同步至 Google Drive"),
-    source: str = typer.Option("incoming", "--source", help="扫描源: incoming (待处理区) 或 reference (正式库)"),
+    sync: bool = typer.Option(
+        False,
+        "--sync/--no-sync",
+        help="是否在解析后立即同步至 Google Drive",
+    ),
+    source: str = typer.Option(
+        "incoming",
+        "--source",
+        help="扫描源: incoming (待处理区) 或 reference (正式库)",
+    ),
 ) -> None:
     """批量处理 PDF 并同步到索引（可选从不同来源扫描）"""
-    from powerlit.services.rag_index import RAGIndexService
-    from powerlit.services.drive_upload import GoogleDriveService
-    
     processor = IncomingPDFProcessor(settings)
     indexer = RAGIndexService(settings)
     drive = GoogleDriveService(settings)
-    
+
     # 根据 source 选择目录
     scan_dir = settings.incoming_pdf_dir if source == "incoming" else settings.reference_dir
     pdf_files = iter_incoming_pdfs(scan_dir)
     total = len(pdf_files) if limit is None else min(len(pdf_files), limit)
-    
+
     if total == 0:
         typer.echo(f"在 {source} 目录下未发现待处理的 PDF 文件")
         return
-        
-    typer.secho(f"发现 {total} 个 PDF 文件 (来源: {source})，准备开始批量入库...", fg=typer.colors.YELLOW, bold=True)
-    
+
+    typer.secho(
+        f"发现 {total} 个 PDF 文件 (来源: {source})，准备开始批量入库...",
+        fg=typer.colors.YELLOW,
+        bold=True,
+    )
+
     success_count = 0
     fail_count = 0
-    
+
     for i, pdf_path in enumerate(pdf_files, start=1):
         if limit is not None and i > limit:
             break
-            
+
         typer.echo(f"\n[{i}/{total}] 正在处理: {pdf_path.name}")
         try:
             # 1. 基础处理 (DOI, 解析, 分析)
@@ -2674,25 +2697,28 @@ def rag_ingest_all(
                 parse=True,
                 analyze=True,
                 force_overwrite=force,
-                progress_callback=lambda msg: typer.secho(f"  {msg}", dim=True)
+                progress_callback=lambda msg: typer.secho(f"  {msg}", dim=True),
             )
-            
+
             # 2. 增量索引
             if result.parsed_json_path:
                 typer.echo(f"  - 正在更新向量索引 (DOI: {result.doi})...")
-                indexer.incremental_index(result.parsed_json_path)
-            
+                try:
+                    indexer.incremental_index(result.parsed_json_path)
+                except RAGVectorDependencyError as exc:
+                    typer.secho(f"  - 跳过语义向量索引：{exc}", fg=typer.colors.YELLOW)
+
             # 3. 同步至 Google Drive (可选)
             if sync and result.doi:
-                typer.echo(f"  - 正在同步至 Google Drive...")
+                typer.echo("  - 正在同步至 Google Drive...")
                 drive.upload_parsed_markdown(result.doi)
-                
+
             typer.secho(f"  ✅ 处理完成: {result.doi}", fg=typer.colors.GREEN)
             success_count += 1
         except Exception as e:
             typer.secho(f"  ❌ 处理失败: {e}", fg=typer.colors.RED)
             fail_count += 1
-            
+
     typer.echo("-" * 40)
     typer.secho(f"🏁 批量处理结束。成功: {success_count}, 失败: {fail_count}", bold=True)
 
@@ -2727,5 +2753,3 @@ def rag_sync_drive(
 
 if __name__ == "__main__":
     app()
-
-

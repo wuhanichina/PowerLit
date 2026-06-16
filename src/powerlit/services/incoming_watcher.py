@@ -6,9 +6,10 @@ from pathlib import Path
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers.polling import PollingObserver
-from powerlit.services.incoming_processor import IncomingPDFProcessor
-from powerlit.services.rag_index import RAGIndexService
+
 from powerlit.services.drive_upload import GoogleDriveService
+from powerlit.services.incoming_processor import IncomingPDFProcessor
+from powerlit.services.rag_index import RAGIndexService, RAGVectorDependencyError
 from powerlit.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,10 @@ class PDFIncomingHandler(FileSystemEventHandler):
             # 2. Update Vector Index
             if result.parsed_json_path:
                 logger.info(f"Updating RAG index for {result.doi}...")
-                self.indexer.incremental_index(result.parsed_json_path)
+                try:
+                    self.indexer.incremental_index(result.parsed_json_path)
+                except RAGVectorDependencyError as exc:
+                    logger.warning("Skipping semantic vector index update: %s", exc)
             
             # 3. Upload to Google Drive (Cloud sync is now a manual/topic-based step)
             # if result.doi:

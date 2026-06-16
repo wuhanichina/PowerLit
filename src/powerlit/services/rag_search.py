@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
 
-import faiss
-from powerlit.services.rag_index import RAGIndexService, ChunkMetadata
+from powerlit.services.rag_index import ChunkMetadata, RAGIndexService
 from powerlit.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -47,23 +45,25 @@ class RAGSearchService:
 
         # Generate query embedding
         query_embedding = self.indexer.model.encode([query], convert_to_numpy=True)
-        faiss.normalize_L2(query_embedding)
+        self.indexer.faiss.normalize_L2(query_embedding)
 
         # Search in FAISS
         distances, indices = self.indexer._index.search(query_embedding, top_k)
 
         results = []
-        for score, idx in zip(distances[0], indices[0]):
+        for score, idx in zip(distances[0], indices[0], strict=False):
             if idx == -1 or idx >= len(self.indexer._metadata):
                 continue
-                
+
             meta: ChunkMetadata = self.indexer._metadata[idx]
-            results.append(SearchResult(
-                doi=meta.doi,
-                title=meta.title,
-                text=meta.text_content,
-                score=float(score),
-                chunk_index=meta.chunk_index
-            ))
+            results.append(
+                SearchResult(
+                    doi=meta.doi,
+                    title=meta.title,
+                    text=meta.text_content,
+                    score=float(score),
+                    chunk_index=meta.chunk_index,
+                )
+            )
 
         return results

@@ -157,7 +157,6 @@ POWERLIT_ANALYSIS_OUTPUT_DIR=<NAS_OR_STORAGE_ROOT>/literature/json
 | AI 分析 | `literature/json/`、`literature/md/` | 保存分析 JSON / Markdown 和费用元数据 |
 | 下载清单 | `literature/metadata/download_list/` | 生成人工下载用的 CSV / Markdown 队列 |
 | 维护脚本 | `scripts/maintenance/` | 长任务、批处理、审计、MinerU 批量解析 |
-| 项目文档 | `docs/` | 架构说明、路线图、专题指南 |
 
 ---
 
@@ -226,7 +225,6 @@ POWERLIT_ANALYSIS_OUTPUT_DIR=<NAS_OR_STORAGE_ROOT>/literature/json
 │   ├── static/                # Web UI 静态资源
 │   └── templates/             # Web UI 页面模板
 ├── config/                    # 可提交配置模板和主题/期刊示例
-├── docs/                      # 架构说明、指南和路线图
 ├── incoming_pdf/              # Windows 入库与下载辅助脚本
 ├── scripts/maintenance/       # 批量维护、审计和长任务脚本
 ├── tools/                     # PDF 文本提取等辅助工具
@@ -262,8 +260,6 @@ literature/
 `incoming_pdf/` 是人工下载到正式文献库的中转站。你可以把 PDF 放入该目录，再运行对应 `.cmd`，让系统识别 DOI、补元数据、重命名、搬运、解析和分析。
 
 `scripts/maintenance/` 放长任务和批量任务，例如全库 MinerU API 批处理、批量解析、元数据审计和 incoming_pdf 一键流水线。
-
-`docs/` 用于放更稳定的项目文档。README 只保留入口级说明，详细设计和专题流程逐步沉淀到 `docs/`。
 
 ---
 
@@ -403,19 +399,13 @@ POWERLIT_CAS_JOURNAL_LIST_PATH=config/cas_journal_whitelist.xlsx
 POWERLIT_CAS_MAX_QUARTILE=2
 ```
 
-模板文件：
-
-- `config/cas_journal_whitelist.template.csv`
-
-详细说明见：
-
-- `docs/guides/cas-whitelist-import.md`
+白名单文件支持 `.xlsx` 和 `.csv`，至少包含期刊名和分区列。文件不存在时，PowerLit 会自动跳过白名单过滤。
 
 ---
 
 ## 提交边界
 
-本仓库保存程序代码、配置模板、流程脚本和项目文档。以下内容默认保留在本机、NAS 或服务器挂载盘：
+本仓库保存程序代码、配置模板、流程脚本和 README 说明。以下内容默认保留在本机、NAS 或服务器挂载盘：
 
 - `.env`
 - `config/ai.yml`
@@ -468,16 +458,11 @@ POWERLIT_CAS_MAX_QUARTILE=2
 
 ## 下一步
 
-路线图见：
-
-- `docs/roadmap.md`
-
 近期更值得继续完善的方向：
 
-1. 把 README 中的长流程进一步拆到 `docs/`。
-2. 为 Web UI 增加更完整的业务测试。
-3. 强化 NAS / Windows Server 部署说明。
-4. 完善周报、月报和主题综述生成流程。
+1. 为 Web UI 增加更完整的业务测试。
+2. 强化 NAS / Windows Server 部署说明。
+3. 完善周报、月报和主题综述生成流程。
 
 ---
 

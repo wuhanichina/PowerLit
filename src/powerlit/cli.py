@@ -2037,6 +2037,7 @@ def audit_existing_note_records(
                 retranscribed += 1
                 store.attach_parsed_artifacts(
                     doi=record.doi,
+                    json_path=artifacts.parsed_json_path,
                     markdown_path=artifacts.note_path,
                 )
             initial_issue_count += artifacts.initial_issue_count
@@ -2048,7 +2049,10 @@ def audit_existing_note_records(
             if echo_each:
                 action = "已重转写" if artifacts.retranscribed else "已审核"
                 typer.echo(f"{action}：{record.doi}")
-                typer.echo(f"  笔记：{artifacts.note_path}")
+                if artifacts.note_path:
+                    typer.echo(f"  笔记：{artifacts.note_path}")
+                if artifacts.parsed_json_path:
+                    typer.echo(f"  解析 JSON：{artifacts.parsed_json_path}")
                 typer.echo(f"  校对报告：{artifacts.proofread_markdown_path}")
                 typer.echo(
                     f"  初始问题：共 {artifacts.initial_issue_count} 个，"
@@ -2723,8 +2727,5 @@ def rag_sync_drive(
 
 if __name__ == "__main__":
     app()
-
-
-
 
 

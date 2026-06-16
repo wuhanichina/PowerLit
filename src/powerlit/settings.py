@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_MINERU_RUNTIME_DIR = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "powerlit-mineru"
 
 
 class Settings(BaseSettings):
@@ -39,11 +37,6 @@ class Settings(BaseSettings):
     ai_file_processing_timeout: float = 180.0
     ai_file_processing_poll_interval: float = 2.0
     ai_delete_uploaded_files_after_note: bool = True
-    ai_local_pdf_text_timeout: float = 30.0
-    pdf_transcription_backend: str = "mineru"
-    mineru_backend: str = "hybrid-auto-engine"
-    mineru_source: str = "huggingface"
-    mineru_runtime_dir: Path = Field(default=DEFAULT_MINERU_RUNTIME_DIR)
     mineru_api_token: str | None = None
     mineru_api_base_url: str = "https://mineru.net/api/v4"
     mineru_api_model_version: str = "vlm"
@@ -57,11 +50,6 @@ class Settings(BaseSettings):
     mineru_api_upload_timeout: float = Field(default=120.0, ge=30.0, le=7200.0)
     mineru_api_download_timeout: float = Field(default=900.0, ge=30.0, le=7200.0)
     mineru_api_batch_timeout: float = Field(default=14400.0, ge=60.0, le=172800.0)
-    # Multi-page PDFs: transcribe each page then merge (avoids single-response output limits).
-    ai_direct_pdf_page_by_page: bool = True
-    ai_direct_pdf_min_pages_for_page_mode: int = 2
-    # Parallel page requests (ThreadPoolExecutor max_workers); 1 = sequential.
-    ai_direct_pdf_page_max_concurrency: int = Field(default=3, ge=1, le=32)
 
     literature_root: Path = Field(default=PROJECT_ROOT / "literature")
     reference_dir: Path = Field(default=PROJECT_ROOT / "literature/reference")
@@ -135,7 +123,6 @@ class Settings(BaseSettings):
             "analysis_output_dir",
             "ai_config_path",
             "debug_output_dir",
-            "mineru_runtime_dir",
             "google_client_secret_path",
             "google_token_path",
         ):
@@ -147,39 +134,6 @@ class Settings(BaseSettings):
         if self.index_root is None:
             self.index_root = self.index_dir / "evidence"
         return self
-
-    @field_validator("pdf_transcription_backend")
-    @classmethod
-    def validate_pdf_transcription_backend(cls, value: str) -> str:
-        return _normalize_choice(
-            value,
-            supported={"mineru", "ai_direct"},
-            label="pdf_transcription_backend",
-        )
-
-    @field_validator("mineru_backend")
-    @classmethod
-    def validate_mineru_backend(cls, value: str) -> str:
-        return _normalize_choice(
-            value,
-            supported={
-                "pipeline",
-                "vlm-http-client",
-                "hybrid-http-client",
-                "vlm-auto-engine",
-                "hybrid-auto-engine",
-            },
-            label="mineru_backend",
-        )
-
-    @field_validator("mineru_source")
-    @classmethod
-    def validate_mineru_source(cls, value: str) -> str:
-        return _normalize_choice(
-            value,
-            supported={"huggingface", "modelscope", "local"},
-            label="mineru_source",
-        )
 
     @field_validator("mineru_api_model_version")
     @classmethod

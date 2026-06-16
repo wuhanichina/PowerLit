@@ -5,14 +5,9 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 
-from pypdf import PdfReader
-
 from powerlit.models import PaperRecord
-from powerlit.services.ai_pricing import AIUsageMetrics, merge_usage_metrics
-from powerlit.services.note_review import NoteQualityReviewService
+from powerlit.services.ai_pricing import AIUsageMetrics
 from powerlit.services.library_layout import build_parsed_output_base
-from powerlit.services.obsidian_notes import ObsidianNoteFormatterService
-from powerlit.services.pdf_parse_text import extract_pdf_text_pdf_parse
 from powerlit.settings import Settings
 
 
@@ -32,13 +27,13 @@ class OutputPaths:
 @dataclass(slots=True)
 class TranscribedArtifacts:
     json_path: Path
-    markdown_path: Path
+    markdown_path: Path | None = None
     proofread_markdown_path: Path | None = None
     proofread_json_path: Path | None = None
     directory_audit_path: Path | None = None
     note_usage: AIUsageMetrics | None = None
     review_usage: AIUsageMetrics | None = None
-    note_generation_mode: str = "ai_direct_pdf_transcription"
+    note_generation_mode: str = "mineru_official_batch_api"
     review_passed: bool | None = None
     review_issue_count: int = 0
     review_severe_issue_count: int = 0
@@ -57,7 +52,7 @@ class ParsedArtifacts:
     directory_audit_path: Path | None = None
     note_usage: AIUsageMetrics | None = None
     review_usage: AIUsageMetrics | None = None
-    note_generation_mode: str = "ai_direct_pdf_transcription"
+    note_generation_mode: str = "mineru_official_batch_api"
     review_passed: bool | None = None
     review_issue_count: int = 0
     review_severe_issue_count: int = 0
@@ -70,8 +65,6 @@ class ParsedArtifacts:
 class PDFParserService:
     def __init__(self, settings: Settings):
         self.settings = settings
-        self.note_formatter = ObsidianNoteFormatterService(settings)
-        self.reviewer = NoteQualityReviewService(settings)
 
     def parse_record(
         self,
@@ -93,32 +86,48 @@ class PDFParserService:
         *,
         progress_callback: Callable[[str, dict[str, object] | None], None] | None = None,
     ) -> ParsedArtifacts:
-        paths = build_output_paths(self.settings, record)
-        paths.output_base.parent.mkdir(parents=True, exist_ok=True)
-        transcribed = self.transcribe_record(
-            record,
-            pdf_path=pdf_path,
-            progress_callback=progress_callback,
+        emit_progress(
+            progress_callback,
+            "mineru_api_parse_started",
+            {"pdf_path": str(pdf_path), "doi": record.doi},
         )
+        try:
+            from powerlit.services.mineru_official_api import (
+                MineruOfficialAPIError,
+                MineruOfficialBatchAPIService,
+            )
+
+            artifact = MineruOfficialBatchAPIService(self.settings).parse_single_record(
+                record,
+                pdf_path=pdf_path,
+            )
+        except MineruOfficialAPIError as exc:
+            raise PDFParseError(str(exc)) from exc
+        finally:
+            emit_progress(
+                progress_callback,
+                "mineru_api_parse_finished",
+                {"pdf_path": str(pdf_path), "doi": record.doi},
+            )
+
+        review_result = build_empty_review_result()
         return ParsedArtifacts(
-            page_count=get_pdf_page_count(pdf_path),
-            text=load_parsed_content(transcribed.json_path),
-            json_path=transcribed.json_path,
-            markdown_path=transcribed.markdown_path,
-            proofread_markdown_path=transcribed.proofread_markdown_path,
-            proofread_json_path=transcribed.proofread_json_path,
-            directory_audit_path=transcribed.directory_audit_path,
-            note_usage=transcribed.note_usage,
-            review_usage=transcribed.review_usage,
-            note_generation_mode=transcribed.note_generation_mode,
-            review_passed=transcribed.review_passed,
-            review_issue_count=transcribed.review_issue_count,
-            review_severe_issue_count=transcribed.review_severe_issue_count,
-            review_derivation_direct_error_count=(
-                transcribed.review_derivation_direct_error_count
-            ),
+            page_count=artifact.page_count,
+            text=load_parsed_content(artifact.json_path),
+            json_path=artifact.json_path,
+            markdown_path=None,
+            proofread_markdown_path=None,
+            proofread_json_path=None,
+            directory_audit_path=None,
+            note_usage=None,
+            review_usage=None,
+            note_generation_mode=artifact.generation_mode,
+            review_passed=review_result.passed,
+            review_issue_count=review_result.issue_count,
+            review_severe_issue_count=review_result.severe_issue_count,
+            review_derivation_direct_error_count=review_result.derivation_direct_error_count,
             review_derivation_consistency_count=(
-                transcribed.review_derivation_consistency_count
+                review_result.derivation_consistency_review_count
             ),
             extraction_method_counts=None,
             debug_artifacts=None,
@@ -133,162 +142,26 @@ class PDFParserService:
     ) -> TranscribedArtifacts:
         if pdf_path is None:
             raise PDFParseError("A local PDF path is required for transcription.")
-        paths = build_output_paths(self.settings, record)
-        paths.output_base.parent.mkdir(parents=True, exist_ok=True)
-
-        note_result = self._format_note(
+        parsed = self.parse_record(
             record,
-            pdf_path=pdf_path,
-            output_path=paths.markdown_path,
+            pdf_path,
             progress_callback=progress_callback,
-        )
-        write_parsed_json(
-            paths.json_path,
-            build_parsed_payload(
-                record,
-                note_content=note_result.markdown,
-                generation_mode=note_result.generation_mode,
-                page_count=get_pdf_page_count(pdf_path),
-                note_usage=note_result.usage,
-            ),
-        )
-        cleanup_review_artifacts(paths)
-
-        review_result = self._review_transcribed_note(
-            record,
-            pdf_path=pdf_path,
-            note_markdown=note_result.markdown,
-        )
-        total_note_usage = note_result.usage
-        total_review_usage = review_result.usage
-        if self._should_retry_with_ai_direct(review_result):
-            fallback = self._retry_with_ai_direct(
-                record,
-                pdf_path=pdf_path,
-                output_path=paths.markdown_path,
-                progress_callback=progress_callback,
-            )
-            if fallback is not None:
-                fallback_note_result, fallback_review_result = fallback
-                total_note_usage = merge_usage_metrics(note_result.usage, fallback_note_result.usage)
-                total_review_usage = merge_usage_metrics(review_result.usage, fallback_review_result.usage)
-                note_result = fallback_note_result
-                review_result = fallback_review_result
-                write_parsed_json(
-                    paths.json_path,
-                    build_parsed_payload(
-                        record,
-                        note_content=note_result.markdown,
-                        generation_mode=note_result.generation_mode,
-                        page_count=get_pdf_page_count(pdf_path),
-                        note_usage=total_note_usage,
-                    ),
-                )
-        write_parsed_json(
-            paths.json_path,
-            build_parsed_payload(
-                record,
-                note_content=note_result.markdown,
-                generation_mode=note_result.generation_mode,
-                page_count=get_pdf_page_count(pdf_path),
-                note_usage=total_note_usage,
-                review_result=review_result,
-            ),
         )
         return TranscribedArtifacts(
-            json_path=paths.json_path,
-            markdown_path=None,
-            proofread_markdown_path=None,
-            proofread_json_path=None,
-            directory_audit_path=None,
-            note_usage=total_note_usage,
-            review_usage=total_review_usage,
-            note_generation_mode=note_result.generation_mode,
-            review_passed=review_result.passed,
-            review_issue_count=review_result.issue_count,
-            review_severe_issue_count=review_result.severe_issue_count,
-            review_derivation_direct_error_count=(
-                review_result.derivation_direct_error_count
-            ),
-            review_derivation_consistency_count=(
-                review_result.derivation_consistency_review_count
-            ),
+            json_path=parsed.json_path,
+            markdown_path=parsed.markdown_path,
+            proofread_markdown_path=parsed.proofread_markdown_path,
+            proofread_json_path=parsed.proofread_json_path,
+            directory_audit_path=parsed.directory_audit_path,
+            note_usage=parsed.note_usage,
+            review_usage=parsed.review_usage,
+            note_generation_mode=parsed.note_generation_mode,
+            review_passed=parsed.review_passed,
+            review_issue_count=parsed.review_issue_count,
+            review_severe_issue_count=parsed.review_severe_issue_count,
+            review_derivation_direct_error_count=parsed.review_derivation_direct_error_count,
+            review_derivation_consistency_count=parsed.review_derivation_consistency_count,
         )
-
-    def _review_transcribed_note(
-        self,
-        record: PaperRecord,
-        *,
-        pdf_path: Path,
-        note_markdown: str,
-    ):
-        if not self.settings.note_review_enabled or not self.reviewer.profile.api_key:
-            return build_empty_review_result()
-
-        source_text: str | None = None
-        try:
-            source_text = extract_pdf_text_pdf_parse(pdf_path, settings=self.settings)
-        except Exception:
-            source_text = None
-
-        try:
-            return self.reviewer.review_note(
-                record,
-                note_markdown=note_markdown,
-                source_text=source_text,
-            )
-        except Exception:
-            return build_empty_review_result()
-
-    def _format_note(
-        self,
-        record: PaperRecord,
-        *,
-        pdf_path: Path,
-        output_path: Path,
-        progress_callback: Callable[[str, dict[str, object] | None], None] | None,
-        backend_override: str | None = None,
-    ):
-        return self.note_formatter.format_note(
-            record,
-            pdf_path=pdf_path,
-            output_path=output_path,
-            proofread_markdown_path=None,
-            backend_override=backend_override,
-            progress_callback=progress_callback,
-        )
-
-    def _should_retry_with_ai_direct(self, review_result) -> bool:  # noqa: ANN001
-        return (
-            self.settings.pdf_transcription_backend == "mineru"
-            and review_result.passed is False
-        )
-
-    def _retry_with_ai_direct(
-        self,
-        record: PaperRecord,
-        *,
-        pdf_path: Path,
-        output_path: Path,
-        progress_callback: Callable[[str, dict[str, object] | None], None] | None,
-    ):
-        try:
-            note_result = self._format_note(
-                record,
-                pdf_path=pdf_path,
-                output_path=output_path,
-                progress_callback=progress_callback,
-                backend_override="ai_direct",
-            )
-            review_result = self._review_transcribed_note(
-                record,
-                pdf_path=pdf_path,
-                note_markdown=note_result.markdown,
-            )
-        except Exception:
-            return None
-        return note_result, review_result
-
 
 def build_output_paths(settings: Settings, record: PaperRecord) -> OutputPaths:
     output_base = build_parsed_output_base(settings.parsed_output_dir, record)
@@ -316,14 +189,6 @@ def build_empty_review_result():  # noqa: ANN201
             "usage": None,
         },
     )()
-
-
-def cleanup_review_artifacts(paths: OutputPaths) -> None:
-    for path in (paths.proofread_markdown_path, paths.proofread_json_path):
-        try:
-            path.unlink(missing_ok=True)
-        except Exception:
-            continue
 
 
 def build_parsed_payload(
@@ -376,10 +241,3 @@ def load_parsed_content(path: Path) -> str:
         return ""
     content = payload.get("content")
     return content if isinstance(content, str) else ""
-
-
-def get_pdf_page_count(pdf_path: Path) -> int:
-    try:
-        return len(PdfReader(str(pdf_path)).pages)
-    except Exception as exc:  # pragma: no cover - defensive fallback
-        raise PDFParseError(f"Unable to read PDF page count: {pdf_path}") from exc

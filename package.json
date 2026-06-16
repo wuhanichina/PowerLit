@@ -1,7 +1,0 @@
-{
-  "name": "powerlit-node-tools",
-  "private": true,
-  "dependencies": {
-    "pdf-parse": "^2.4.5"
-  }
-}

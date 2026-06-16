@@ -130,12 +130,20 @@ class MineruOfficialBatchAPIService:
             raise MineruOfficialAPIError("Official MinerU batch API requires a DOI-backed record.")
         if not record.local_pdf_path:
             raise MineruOfficialAPIError("Official MinerU batch API requires an attached PDF.")
+        return self.build_batch_file_from_path(record, Path(record.local_pdf_path).resolve())
+
+    def build_batch_file_from_path(self, record: PaperRecord, pdf_path: Path) -> MineruBatchFile:
+        if not record.doi:
+            raise MineruOfficialAPIError("Official MinerU batch API requires a DOI-backed record.")
+        pdf_path = pdf_path.resolve()
+        if not pdf_path.exists():
+            raise MineruOfficialAPIError(f"PDF file does not exist: {pdf_path}")
         data_id = doi_to_suffix(record.doi)
         return MineruBatchFile(
             record=record,
-            pdf_path=Path(record.local_pdf_path).resolve(),
+            pdf_path=pdf_path,
             data_id=data_id,
-            file_name=Path(record.local_pdf_path).name,
+            file_name=pdf_path.name,
         )
 
     def ensure_storage_available(self) -> None:
@@ -152,6 +160,40 @@ class MineruOfficialBatchAPIService:
             raise MineruStorageUnavailableError(
                 f"Parsed output directory is unavailable: {self.settings.parsed_output_dir}"
             ) from exc
+
+    def parse_single_record(
+        self,
+        record: PaperRecord,
+        *,
+        pdf_path: Path,
+    ) -> MineruParsedArtifact:
+        self.ensure_storage_available()
+        batch_file = self.build_batch_file_from_path(record, pdf_path)
+        upload_batch = self.create_upload_batch([batch_file])
+        uploaded, upload_failures = self.upload_batch_files(upload_batch, [batch_file])
+        if upload_failures:
+            raise MineruOfficialAPIError(upload_failures[0].error)
+        if not uploaded:
+            raise MineruOfficialAPIError(f"MinerU upload failed for {batch_file.file_name}.")
+        results = self.wait_for_batch_results(
+            upload_batch.batch_id,
+            expected_data_ids={batch_file.data_id},
+        )
+        result = find_result_for_batch_file(results, batch_file)
+        if result is None:
+            raise MineruOfficialAPIError(
+                f"No MinerU result returned for batch {upload_batch.batch_id}."
+            )
+        if not result.is_success:
+            raise MineruOfficialAPIError(
+                result.err_msg
+                or f"MinerU result for {batch_file.file_name} ended in state {result.state}."
+            )
+        zip_bytes = self.download_result_archive(result)
+        return self.write_parsed_artifact(
+            batch_file,
+            zip_bytes=zip_bytes,
+        )
 
     def create_upload_batch(self, files: list[MineruBatchFile]) -> MineruUploadBatch:
         if not files:
@@ -607,6 +649,19 @@ def extract_mineru_archive(zip_bytes: bytes) -> MineruArchiveContents:
         content_list_member=content_list_member,
         content_list_payload=content_list_payload,
     )
+
+
+def find_result_for_batch_file(
+    results: list[MineruBatchResult],
+    batch_file: MineruBatchFile,
+) -> MineruBatchResult | None:
+    for result in results:
+        if result.data_id and result.data_id == batch_file.data_id:
+            return result
+    for result in results:
+        if result.file_name and result.file_name == batch_file.file_name:
+            return result
+    return None
 
 
 def select_archive_member(

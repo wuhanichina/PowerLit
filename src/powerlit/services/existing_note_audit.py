@@ -16,9 +16,10 @@ from powerlit.settings import Settings
 
 @dataclass(slots=True)
 class ExistingNoteAuditArtifacts:
-    note_path: Path
+    note_path: Path | None
     proofread_markdown_path: Path
     proofread_json_path: Path
+    parsed_json_path: Path | None = None
     directory_audit_path: Path | None = None
     initial_issue_count: int = 0
     initial_severe_issue_count: int = 0
@@ -71,6 +72,7 @@ class ExistingNoteAuditService:
             transcribed = self.parser.transcribe_record(record, pdf_path=pdf_path)
             return ExistingNoteAuditArtifacts(
                 note_path=transcribed.markdown_path,
+                parsed_json_path=transcribed.json_path,
                 proofread_markdown_path=transcribed.proofread_markdown_path
                 or paths.proofread_markdown_path,
                 proofread_json_path=transcribed.proofread_json_path or paths.proofread_json_path,

@@ -100,19 +100,19 @@ Copy-Item config\ai.example.yml config\ai.yml
 
 ### 3. 配置文献库路径
 
-本地使用时可以保留默认相对路径。若文献库已经放到 NAS 或网盘，建议在 `.env` 中显式指定：
+本地使用时可以保留默认相对路径。若文献库已经放到 NAS 或网盘，建议在 `.env` 中显式指定。下面的 `<NAS_OR_STORAGE_ROOT>` 是占位符，请替换为你自己的挂载目录：
 
 ```env
-POWERLIT_LITERATURE_ROOT=/Volumes/PowerLit/literature
-POWERLIT_REFERENCE_DIR=/Volumes/PowerLit/literature/reference
-POWERLIT_MD_DIR=/Volumes/PowerLit/literature/md
-POWERLIT_METADATA_DIR=/Volumes/PowerLit/literature/metadata
-POWERLIT_OUTPUT_DIR=/Volumes/PowerLit/literature/metadata
-POWERLIT_DOWNLOAD_LIST_DIR=/Volumes/PowerLit/literature/metadata/download_list
-POWERLIT_DB_PATH=/Volumes/PowerLit/literature/metadata/papers.db
-POWERLIT_INCOMING_PDF_DIR=/Volumes/PowerLit/incoming_pdf
-POWERLIT_PARSED_OUTPUT_DIR=/Volumes/PowerLit/literature/json
-POWERLIT_ANALYSIS_OUTPUT_DIR=/Volumes/PowerLit/literature/json
+POWERLIT_LITERATURE_ROOT=<NAS_OR_STORAGE_ROOT>/literature
+POWERLIT_REFERENCE_DIR=<NAS_OR_STORAGE_ROOT>/literature/reference
+POWERLIT_MD_DIR=<NAS_OR_STORAGE_ROOT>/literature/md
+POWERLIT_METADATA_DIR=<NAS_OR_STORAGE_ROOT>/literature/metadata
+POWERLIT_OUTPUT_DIR=<NAS_OR_STORAGE_ROOT>/literature/metadata
+POWERLIT_DOWNLOAD_LIST_DIR=<NAS_OR_STORAGE_ROOT>/literature/metadata/download_list
+POWERLIT_DB_PATH=<NAS_OR_STORAGE_ROOT>/literature/metadata/papers.db
+POWERLIT_INCOMING_PDF_DIR=<NAS_OR_STORAGE_ROOT>/incoming_pdf
+POWERLIT_PARSED_OUTPUT_DIR=<NAS_OR_STORAGE_ROOT>/literature/json
+POWERLIT_ANALYSIS_OUTPUT_DIR=<NAS_OR_STORAGE_ROOT>/literature/json
 ```
 
 ### 4. 检查命令是否可用

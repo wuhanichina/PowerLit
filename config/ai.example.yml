@@ -21,9 +21,6 @@ profiles:
     base_url: https://api.siliconflow.cn/v1
     api_key: ""
     model: Qwen/Qwen2.5-72B-Instruct
-    currency: CNY
-    input_price_per_mtokens: 4.13
-    output_price_per_mtokens: 4.13
 
   deepseek-v3:
     provider: deepseek
@@ -31,9 +28,6 @@ profiles:
     api_key: ""
     model: deepseek-chat
     timeout: 120
-    currency: CNY
-    input_price_per_mtokens: 2.0
-    output_price_per_mtokens: 8.0
 
 # 全局默认配置档（tasks 中未指定的任务使用此 profile）
 default: qwen-72b

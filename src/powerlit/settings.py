@@ -29,9 +29,6 @@ class Settings(BaseSettings):
     ai_note_source_char_limit: int = 90000
     ai_note_chunk_char_limit: int = 6000
     note_review_enabled: bool = True
-    ai_currency: str = "CNY"
-    ai_input_price_per_mtokens: float | None = None
-    ai_output_price_per_mtokens: float | None = None
     ai_config_path: Path = Field(default=PROJECT_ROOT / "config/ai.yml")
     debug_output_dir: Path = Field(default=PROJECT_ROOT / "debug/output")
     ai_file_processing_timeout: float = 180.0
@@ -73,7 +70,7 @@ class Settings(BaseSettings):
     parsed_output_dir: Path = Field(default=PROJECT_ROOT / "literature/json")
     analysis_output_dir: Path = Field(default=PROJECT_ROOT / "literature/json")
     embedding_model: str = "BAAI/bge-m3"
-    embedding_device: str = "mps"
+    embedding_device: str = "auto"
     embedding_batch_size: int = 16
     google_client_secret_path: Path | None = None
     google_token_path: Path | None = None
@@ -142,6 +139,15 @@ class Settings(BaseSettings):
             value,
             supported={"pipeline", "vlm", "mineru-html"},
             label="mineru_api_model_version",
+        )
+
+    @field_validator("embedding_device")
+    @classmethod
+    def validate_embedding_device(cls, value: str) -> str:
+        return _normalize_choice(
+            value,
+            supported={"auto", "cpu", "cuda", "mps"},
+            label="embedding_device",
         )
 
     @property

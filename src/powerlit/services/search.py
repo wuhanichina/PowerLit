@@ -35,8 +35,7 @@ class SearchService:
             records.extend(provider_records)
         deduped = dedupe_records(records)
         filtered = self.cas_whitelist.filter_records(deduped)
-        enriched = self.researchgate.annotate(filtered)
-        return sorted(enriched, key=sort_key)
+        return self.researchgate.annotate(filtered)
 
     def batch_search(self, bundle: QueryBundle) -> dict[str, list[PaperRecord]]:
         return {query.name: self.search(query) for query in bundle.queries}

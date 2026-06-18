@@ -28,11 +28,8 @@ class AIProfileConfig(BaseModel):
     source_char_limit: int = 16000
     note_source_char_limit: int = 90000
     note_chunk_char_limit: int = 6000
-    currency: str = "CNY"
-    input_price_per_mtokens: float | None = None
-    output_price_per_mtokens: float | None = None
 
-    @field_validator("provider", "base_url", "model", "currency")
+    @field_validator("provider", "base_url", "model")
     @classmethod
     def strip_text(cls, value: str) -> str:
         return value.strip()
@@ -106,9 +103,6 @@ def build_fallback_config(settings: Settings) -> AIConfig:
         source_char_limit=settings.ai_source_char_limit,
         note_source_char_limit=settings.ai_note_source_char_limit,
         note_chunk_char_limit=settings.ai_note_chunk_char_limit,
-        currency=settings.ai_currency,
-        input_price_per_mtokens=settings.ai_input_price_per_mtokens,
-        output_price_per_mtokens=settings.ai_output_price_per_mtokens,
     )
     return AIConfig(
         profiles={"env-default": profile},
